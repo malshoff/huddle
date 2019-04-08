@@ -131,8 +131,9 @@ def getCalendar(calendar_service,requests):
 
 def turnovers():
     with open('password.json', 'r') as creds:
-            credentials = json.loads(creds.read())
-            r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
-            print(r.text)
+        credentials = json.loads(creds.read())
+        r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
+        print(r.text)
+
 if __name__ == '__main__':
     main()
