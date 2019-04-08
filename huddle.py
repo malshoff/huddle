@@ -1,10 +1,15 @@
 from __future__ import print_function
-import pickle
-import os.path
+
 import datetime
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import os.path
+import pickle
+import json
+import requests
+from requests.auth import HTTPBasicAuth
+
 from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/presentations',
@@ -124,5 +129,10 @@ def getCalendar(calendar_service,requests):
         },
     )
 
+def turnovers():
+    with open('password.json', 'r') as creds:
+            credentials = json.loads(creds.read())
+            r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
+            print(r.text)
 if __name__ == '__main__':
     main()
