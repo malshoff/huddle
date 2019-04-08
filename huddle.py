@@ -14,10 +14,12 @@ SCOPES = ['https://www.googleapis.com/auth/presentations',
 
 # The ID of a sample presentation.
 PRESENTATION_ID = '1iindiC1jQI8J-c0ZoEDGlCefEQXjK19JDs9bjWbVFXY'
+TODAYS_DATE = str(datetime.date.today())
+
 
 
 def main():
-    
+    requests = []
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -41,36 +43,43 @@ def main():
     drive_service = build('drive', 'v3', credentials=creds)
     calendar_service = build('calendar', 'v3', credentials=creds)
 
-    mergeText(service, drive_service)
+    presentation_copy_id = copyPresentation(drive_service)
+    createDate(requests)
+    getCalendar(calendar_service,requests)
+    mergeText(service, presentation_copy_id, requests)
     print('Merged text Succesfully')
     getCalendar(calendar_service)
     print('Succesfully Updated Heightened Awareness')
-    
-def mergeText(service, drive_service):
-    todays_date = str(datetime.date.today())
-    # Duplicate the template presentation using the Drive API.
-    copy_title = 'Daily Huddle ' + todays_date
-    body = {
-        'name': copy_title
-    }
-    drive_response = drive_service.files().copy(
-        fileId=PRESENTATION_ID, body=body).execute()
-    presentation_copy_id = drive_response.get('id')
 
-    # Create the text merge (replaceAllText) requests
-    # for this presentation.
-    requests = [
+def createDate(requests):
+
+    # Include the date in the text merge (replaceAllText) request
+ 
+    requests.append(
         {
             'replaceAllText': {
                 'containsText': {
                     'text': '{{DATE}}',
                     'matchCase': True
                 },
-                'replaceText': todays_date
+                'replaceText': TODAYS_DATE
             }
         },
-    ]
+    )
 
+def copyPresentation(drive_service):
+    copy_title = 'Daily Huddle ' + TODAYS_DATE
+    body = {
+        'name': copy_title
+    }
+    drive_response = drive_service.files().copy(
+        fileId=PRESENTATION_ID, body=body).execute()
+
+    return drive_response.get('id')
+        
+    
+def mergeText(service, presentation_copy_id ,requests):
+    
     # Execute the requests for this presentation.
     body = {
         'requests': requests
@@ -86,21 +95,34 @@ def mergeText(service, drive_service):
         print('Created presentation ID: %s' % presentation_copy_id)
         print('Replaced %d text instances' % num_replacements)
 
-def getCalendar(calendar_service):
+def getCalendar(calendar_service,requests):
     CALENDAR_ID = 'pivotal.io_lq4bhr6dgtnhmlj3fc82g4o3c4@group.calendar.google.com'
 
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    print('Getting the upcoming 10 events')
+    print('Getting the current HA events')
     events_result = calendar_service.events().list(calendarId=CALENDAR_ID,timeMin=now,
                                         singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
+    allEvents = ''
 
     if not events:
         print('No current HA events found.')
     for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-        print(start, event['summary'])
+        allEvents = allEvents + event['summary'] + ', '
+        print(event['summary'])
+
+    requests.append(
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': '{{HA}}',
+                    'matchCase': True
+                },
+                'replaceText': allEvents
+            }
+        },
+    )
 
 if __name__ == '__main__':
     main()
