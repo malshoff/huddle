@@ -129,11 +129,25 @@ def getCalendar(calendar_service,requests):
         },
     )
 
-def turnovers():
+def requeues(requests):
+    endstr = ''
     with open('password.json', 'r') as creds:
         credentials = json.loads(creds.read())
         r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
-        print(r.text)
+        #print(r.text)
+        for requeue in r.json():
+            endstr = endstr + requeue['ticket'] + " " + requeue['subject'] + ' ' + requeue['product_name'] + '\n'
 
+        requests.append(
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': '{{RQ}}',
+                    'matchCase': True
+                },
+                'replaceText': endstr
+            }
+        },
+        )
 if __name__ == '__main__':
     main()
