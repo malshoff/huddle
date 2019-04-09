@@ -14,13 +14,26 @@ from googleapiclient.discovery import build
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/presentations',
           'https://www.googleapis.com/auth/drive',
-          'https://www.googleapis.com/auth/calendar'
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/spreadsheets.readonly'
           ]
 
 # The ID of a sample presentation.
 PRESENTATION_ID = '1iindiC1jQI8J-c0ZoEDGlCefEQXjK19JDs9bjWbVFXY'
-TODAYS_DATE = str(datetime.date.today())
+SPREADSHEET_ID = '1ViBwy7VG3J63IwSZDyqvlC5uQF3qC6Lyj4p3DUTzbTg'
+TODAYS_DATE = datetime.date.today()
+EAST_COAST_ENGINEER_IDS = [123, 52, 17, 116, 51, 128, 40, 140, 119, 127, 142, 143, 31, 91, 115, 42, 136, 126, 114, 147, 77, 124, 145, 85, 72, 117, 121, 135, 146, 144, 150, 129, 154, 133, 141, 12, 134, 138, 137, 151, 118, 149, 148, 16]
+employeeAvailability = {key:0 for key in EAST_COAST_ENGINEER_IDS}
+UNAVAILABLE = [9,10,12,13,14,15,16]
 
+credentials = None
+EAST_COAST_ENGINEERS = None
+
+with open('east-coast-engineers.json', 'r') as engineers:
+    EAST_COAST_ENGINEERS = json.loads(engineers.read())
+
+with open('password.json', 'r') as creds:
+    credentials = json.loads(creds.read())
 
 
 def main():
@@ -47,16 +60,71 @@ def main():
     service = build('slides', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
     calendar_service = build('calendar', 'v3', credentials=creds)
+    sheets_service = build('sheets', 'v4', credentials=creds)
 
+    getNextQB(sheets_service,bodies)
+    
     createDate(bodies)
-    print("Date Retrieved")
+    print("Retrieved Date")
+    getAvailability(bodies)
+    print("Retrieved Out of Office from Roster")
     requeues(bodies)
+    print("Retrieved this morning's requeues")
     #getCalendar(calendar_service,bodies)
     #print('Succesfully Updated Heightened Awareness')
     presentation_copy_id = copyPresentation(drive_service)
     mergeText(service, presentation_copy_id, bodies)
-    print('Merged text Succesfully')
+    print('Succesfully created slide deck for ' + str(TODAYS_DATE))
     
+    
+def getAvailability(bodies):
+    r = requests.get('https://pivotal-roster-api.cfapps.io/api/schedule/employee_schedule?audit_date='+str(TODAYS_DATE), auth=(credentials['user'], credentials['pass']))
+    engs = r.json()
+    for eng in engs:
+        engID = eng["engineer"]
+        if engID in employeeAvailability:
+            employeeAvailability[engID] = eng["availability"]   
+    outOfOffice = ''
+    for employee in EAST_COAST_ENGINEERS:
+        if employeeAvailability[employee["id"]] in UNAVAILABLE:
+            outOfOffice = outOfOffice + employee["first_name"] + " " + employee["last_name"] + ", "
+    bodies.append(
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': '{{OOO}}',
+                    'matchCase': True
+                },
+                'replaceText': outOfOffice
+            }
+        },
+    )
+
+def getNextQB(sheets_service,bodies):
+    year, weekNum, dayOfWeek = TODAYS_DATE.isocalendar()
+    sheet = sheets_service.spreadsheets()
+    sheetRange = "Huddle!A"+str(weekNum)+":C"+str(weekNum)
+    print("Using sheetRange: " + sheetRange)
+    result = sheet.values().get(spreadsheetId=SPREADSHEET_ID,
+                                range=sheetRange).execute()
+    values = result.get('values', [])
+
+    if not values:
+        qbs = "None Found"
+    else:
+        qbs = values[0][1] + " and " + values[0][2]
+
+    bodies.append(
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': '{{ROTATION}}',
+                    'matchCase': True
+                },
+                'replaceText': qbs
+            }
+        },
+    )
 
 def createDate(bodies):
 
@@ -69,13 +137,13 @@ def createDate(bodies):
                     'text': '{{DATE}}',
                     'matchCase': True
                 },
-                'replaceText': TODAYS_DATE
+                'replaceText': str(TODAYS_DATE)
             }
         },
     )
 
 def copyPresentation(drive_service):
-    copy_title = 'Daily Huddle ' + TODAYS_DATE
+    copy_title = 'Daily Huddle ' + str(TODAYS_DATE)
     body = {
         'name': copy_title
     }
@@ -140,7 +208,9 @@ def requeues(bodies):
         for requeue in r.json():
             if not requeue['assignee']:
                 endstr = endstr + str(requeue['ticket']) + " " + str(requeue['subject']) + ' - ' + str(requeue['product_name']) + '\n'
-        print(endstr)
+        #print(endstr)
+        if not endstr:
+            endstr = "No Requeues"
         bodies.append(
         {
             'replaceAllText': {
