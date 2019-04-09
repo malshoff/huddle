@@ -24,7 +24,7 @@ TODAYS_DATE = str(datetime.date.today())
 
 
 def main():
-    requests = []
+    bodies = []
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -48,19 +48,21 @@ def main():
     drive_service = build('drive', 'v3', credentials=creds)
     calendar_service = build('calendar', 'v3', credentials=creds)
 
+    createDate(bodies)
+    print("Date Retrieved")
+    requeues(bodies)
+    #getCalendar(calendar_service,bodies)
+    #print('Succesfully Updated Heightened Awareness')
     presentation_copy_id = copyPresentation(drive_service)
-    createDate(requests)
-    getCalendar(calendar_service,requests)
-    mergeText(service, presentation_copy_id, requests)
+    mergeText(service, presentation_copy_id, bodies)
     print('Merged text Succesfully')
-    getCalendar(calendar_service)
-    print('Succesfully Updated Heightened Awareness')
+    
 
-def createDate(requests):
+def createDate(bodies):
 
     # Include the date in the text merge (replaceAllText) request
  
-    requests.append(
+    bodies.append(
         {
             'replaceAllText': {
                 'containsText': {
@@ -83,11 +85,11 @@ def copyPresentation(drive_service):
     return drive_response.get('id')
         
     
-def mergeText(service, presentation_copy_id ,requests):
+def mergeText(service, presentation_copy_id ,bodies):
     
     # Execute the requests for this presentation.
     body = {
-        'requests': requests
+        'requests': bodies
     }
     response = service.presentations().batchUpdate(
         presentationId=presentation_copy_id, body=body).execute()
@@ -100,7 +102,7 @@ def mergeText(service, presentation_copy_id ,requests):
         print('Created presentation ID: %s' % presentation_copy_id)
         print('Replaced %d text instances' % num_replacements)
 
-def getCalendar(calendar_service,requests):
+def getCalendar(calendar_service,bodies):
     CALENDAR_ID = 'pivotal.io_lq4bhr6dgtnhmlj3fc82g4o3c4@group.calendar.google.com'
 
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
@@ -117,7 +119,7 @@ def getCalendar(calendar_service,requests):
         allEvents = allEvents + event['summary'] + ', '
         print(event['summary'])
 
-    requests.append(
+    bodies.append(
         {
             'replaceAllText': {
                 'containsText': {
@@ -129,16 +131,16 @@ def getCalendar(calendar_service,requests):
         },
     )
 
-def requeues(requests):
+def requeues(bodies):
     endstr = ''
     with open('password.json', 'r') as creds:
         credentials = json.loads(creds.read())
         r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
         #print(r.text)
         for requeue in r.json():
-            endstr = endstr + requeue['ticket'] + " " + requeue['subject'] + ' ' + requeue['product_name'] + '\n'
-
-        requests.append(
+            endstr = endstr + str(requeue['ticket']) + " " + str(requeue['subject']) + ' - ' + str(requeue['product_name']) + '\n'
+        print(endstr)
+        bodies.append(
         {
             'replaceAllText': {
                 'containsText': {
