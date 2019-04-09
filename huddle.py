@@ -138,7 +138,8 @@ def requeues(bodies):
         r = requests.get('https://salesforce-api-emitter.cfapps.io/api/turnover/cases/?completed=false', auth=(credentials['user'], credentials['pass']))
         #print(r.text)
         for requeue in r.json():
-            endstr = endstr + str(requeue['ticket']) + " " + str(requeue['subject']) + ' - ' + str(requeue['product_name']) + '\n'
+            if not requeue['assignee']:
+                endstr = endstr + str(requeue['ticket']) + " " + str(requeue['subject']) + ' - ' + str(requeue['product_name']) + '\n'
         print(endstr)
         bodies.append(
         {
