@@ -103,7 +103,8 @@ def getAvailability(bodies):
 def getNextQB(sheets_service,bodies):
     year, weekNum, dayOfWeek = TODAYS_DATE.isocalendar()
     sheet = sheets_service.spreadsheets()
-    sheetRange = "Huddle!A"+str(weekNum)+":C"+str(weekNum)
+    nextWeek = weekNum + 1
+    sheetRange = "Huddle!A"+str(nextWeek)+":C"+str(nextWeek)
     print("Using sheetRange: " + sheetRange)
     result = sheet.values().get(spreadsheetId=SPREADSHEET_ID,
                                 range=sheetRange).execute()
