@@ -18,13 +18,13 @@ SCOPES = ['https://www.googleapis.com/auth/presentations',
           'https://www.googleapis.com/auth/spreadsheets.readonly'
           ]
 
-# The ID of a sample presentation.
+
 PRESENTATION_ID = '1iindiC1jQI8J-c0ZoEDGlCefEQXjK19JDs9bjWbVFXY'
 SPREADSHEET_ID = '1ViBwy7VG3J63IwSZDyqvlC5uQF3qC6Lyj4p3DUTzbTg'
 TODAYS_DATE = datetime.date.today()
 EAST_COAST_ENGINEER_IDS = [123, 52, 17, 116, 51, 128, 40, 140, 119, 127, 142, 143, 31, 91, 115, 42, 136, 126, 114, 147, 77, 124, 145, 85, 72, 117, 121, 135, 146, 144, 150, 129, 154, 133, 141, 12, 134, 138, 137, 151, 118, 149, 148, 16]
 employeeAvailability = {key:0 for key in EAST_COAST_ENGINEER_IDS}
-UNAVAILABLE = [9,10,12,13,14,15,16]
+UNAVAILABLE_CODES = [9,10,12,13,14,15,16]
 
 credentials = None
 EAST_COAST_ENGINEERS = None
@@ -59,7 +59,7 @@ def main():
 
     service = build('slides', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
-    calendar_service = build('calendar', 'v3', credentials=creds)
+    #calendar_service = build('calendar', 'v3', credentials=creds)
     sheets_service = build('sheets', 'v4', credentials=creds)
 
     getNextQB(sheets_service,bodies)
@@ -86,7 +86,7 @@ def getAvailability(bodies):
             employeeAvailability[engID] = eng["availability"]   
     outOfOffice = ''
     for employee in EAST_COAST_ENGINEERS:
-        if employeeAvailability[employee["id"]] in UNAVAILABLE:
+        if employeeAvailability[employee["id"]] in UNAVAILABLE_CODES:
             outOfOffice = outOfOffice + employee["first_name"] + " " + employee["last_name"] + ", "
     bodies.append(
         {
