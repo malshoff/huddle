@@ -5,3 +5,6 @@ password.json
 test.py
 *.xlsx
 audit-test.json
+site/env/bin/chardetect
+site/env/
+venv/
