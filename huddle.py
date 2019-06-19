@@ -5,6 +5,7 @@ import os.path
 import pickle
 import json
 import requests
+from collections import defaultdict
 from requests.auth import HTTPBasicAuth
 
 from google.auth.transport.requests import Request
@@ -19,8 +20,8 @@ SCOPES = ['https://www.googleapis.com/auth/presentations',
           ]
 
 
-PRESENTATION_ID = '1iindiC1jQI8J-c0ZoEDGlCefEQXjK19JDs9bjWbVFXY'
-SPREADSHEET_ID = '1ViBwy7VG3J63IwSZDyqvlC5uQF3qC6Lyj4p3DUTzbTg'
+PRESENTATION_ID = '1HoXbluH6KU2OfamNL1hevFdh4oN1ZKRpLM5u-33_0UI'
+SPREADSHEET_ID = '1YzxBKcLPtZ1Fqy1knHTJ6wC_8WGARyZ4I1fPq1IGg14'
 TODAYS_DATE = datetime.date.today()
 EAST_COAST_ENGINEER_IDS = [123, 52, 17, 116, 51, 128, 40, 140, 119, 127, 142, 143, 31, 91, 115, 42, 136, 126, 114, 147, 77, 124, 145, 85, 72, 117, 121, 135, 146, 144, 150, 129, 154, 133, 141, 12, 134, 138, 137, 151, 118, 149, 148, 16]
 employeeAvailability = {key:0 for key in EAST_COAST_ENGINEER_IDS}
@@ -59,7 +60,7 @@ def main():
 
     service = build('slides', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
-    #calendar_service = build('calendar', 'v3', credentials=creds)
+    calendar_service = build('calendar', 'v3', credentials=creds)
     sheets_service = build('sheets', 'v4', credentials=creds)
 
     getNextQB(sheets_service,bodies)
@@ -70,8 +71,8 @@ def main():
     print("Retrieved Out of Office from Roster")
     requeues(bodies)
     print("Retrieved this morning's requeues")
-    #getCalendar(calendar_service,bodies)
-    #print('Succesfully Updated Heightened Awareness')
+    getCalendar(calendar_service,bodies)
+    print('Succesfully Updated Heightened Awareness')
     presentation_copy_id = copyPresentation(drive_service)
     mergeText(service, presentation_copy_id, bodies)
     print('Succesfully created slide deck for ' + str(TODAYS_DATE))
@@ -146,11 +147,21 @@ def createDate(bodies):
 def copyPresentation(drive_service):
     copy_title = 'Daily Huddle ' + str(TODAYS_DATE)
     body = {
-        'name': copy_title
+        'name': copy_title,
+        'writersCanShare': True,
     }
-    drive_response = drive_service.files().copy(
-        fileId=PRESENTATION_ID, body=body).execute()
 
+    drive_response = drive_service.files().copy(
+        fileId=PRESENTATION_ID, fields="*", body=body, supportsAllDrives=True).execute()
+    #print(drive_response)
+    drive_service.permissions().update(permissionId=drive_response["owners"][0]["permissionId"],fileId=drive_response.get('id'),
+                             body={
+                                 'role': 'owner',
+                                 
+                             },
+                             transferOwnership=True,
+                             
+                             ).execute()
     return drive_response.get('id')
         
     
@@ -180,13 +191,17 @@ def getCalendar(calendar_service,bodies):
                                         singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
+    print(events)
     allEvents = ''
-
+    seenEvents = defaultdict(int)
     if not events:
         print('No current HA events found.')
     for event in events:
-        allEvents = allEvents + event['summary'] + ', '
-        print(event['summary'])
+        
+        if event['summary'] not in seenEvents:
+            allEvents = allEvents + event['summary'] + '\n'
+            print(event['summary'])
+            seenEvents[event['summary']] = 1
 
     bodies.append(
         {
