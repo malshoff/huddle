@@ -4,9 +4,11 @@ from flask import request
 from flask import redirect
 
 import pymongo
-from bson.objectid import ObjectId
-import os
 
+from bson.objectid import ObjectId
+from bson.json_util import dumps
+
+import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -16,10 +18,11 @@ CONNECT_STRING = "mongodb://huddle:huddlepass1@ds139427.mlab.com:39427/huddle"
 connection = pymongo.MongoClient(CONNECT_STRING)
 db = connection.huddle
 announcements = db.announcements
+PRESENT = datetime.today()
 
 @app.route('/')
-def hello_world(announce=None):
-    present = datetime.today()
+def index(announce=None):
+    
 
    
     
@@ -28,7 +31,7 @@ def hello_world(announce=None):
 
         announce = list(announcements.find({
        'expires': {
-            '$gte': present
+            '$gte': PRESENT
         },
 
         "deleted": False ,
@@ -68,6 +71,7 @@ def delete_announcement(id):
         )
     return redirect("/")
 
+
 @app.route('/add-announcement/', methods=['POST'])
 def add_announcement():
     description = request.form.get('description')
@@ -85,6 +89,17 @@ def add_announcement():
     a = announcements.insert_one(announcement)
 
     return redirect("/")
+
+@app.route("/announcements/")
+def get_announcements():
+    return dumps(announcements.find({
+       'expires': {
+            '$gte': PRESENT
+        },
+
+        "deleted": False ,
+        
+       }))
 
 if __name__ == "__main__":
    

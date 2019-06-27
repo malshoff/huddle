@@ -73,6 +73,8 @@ def main():
     print("Retrieved this morning's requeues")
     getCalendar(calendar_service,bodies)
     print('Succesfully Updated Heightened Awareness')
+    getAnnouncements(bodies)
+    print('Retrieved Announcements')
     presentation_copy_id = copyPresentation(drive_service)
     mergeText(service, presentation_copy_id, bodies)
     print('Succesfully created slide deck for ' + str(TODAYS_DATE))
@@ -191,7 +193,7 @@ def getCalendar(calendar_service,bodies):
                                         singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
-    print(events)
+    #print(events)
     allEvents = ''
     seenEvents = defaultdict(int)
     if not events:
@@ -214,6 +216,25 @@ def getCalendar(calendar_service,bodies):
             }
         },
     )
+
+def getAnnouncements(bodies):
+    r = requests.get('http://localhost:5000/announcements/')
+    announcements = r.json()
+    endstr = ''
+    for announcement in announcements:
+        endstr += announcement['description'] + '\n'
+    
+    bodies.append(
+        {
+            'replaceAllText': {
+                'containsText': {
+                    'text': '{{ANNOUNCEMENTS}}',
+                    'matchCase': True
+                },
+                'replaceText': endstr
+            }
+        },
+        )
 
 def requeues(bodies):
     endstr = ''
