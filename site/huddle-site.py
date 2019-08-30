@@ -20,12 +20,20 @@ db = connection.huddle
 announcements = db.announcements
 PRESENT = datetime.today()
 
+def createAnnouncement(desc,author,expDate):
+    expires = datetime.strptime(expDate, '%Y-%m-%d')
+
+    announcement = {
+        'author': author ,
+        'description': desc , 
+        'expires': expires,
+        'deleted': False
+    }
+
+    return announcement
+
 @app.route('/')
 def index(announce=None):
-    
-
-   
-    
     return render_template(
         "index.html",
 
@@ -44,14 +52,9 @@ def edit_announcement(id):
     description = request.form.get('description')
     author = request.form.get('author')
     expiry_date= request.form.get('expires')
-    expires = datetime.strptime(expiry_date, '%Y-%m-%d')
+   
 
-    announcement = {
-        'author': author ,
-        'description': description , 
-        'expires': expires,
-        'deleted': False
-    }
+    announcement = createAnnouncement(description,author,expiry_date)
 
     announcements.find_one_and_update(
         
@@ -86,7 +89,7 @@ def add_announcement():
         'deleted': False
     }
 
-    a = announcements.insert_one(announcement)
+    announcements.insert_one(announcement)
 
     return redirect("/")
 
